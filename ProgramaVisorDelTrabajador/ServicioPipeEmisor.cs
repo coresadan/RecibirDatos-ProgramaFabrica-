@@ -20,6 +20,7 @@ namespace ProgramaVisorDelTrabajador
         {
             try
             {
+
                 using var client = new NamedPipeClientStream(".", NombrePipeRespuesta, PipeDirection.Out);
                 await client.ConnectAsync(2000);
 
