@@ -78,6 +78,9 @@ namespace ProgramaVisorDelTrabajador
 
         private async void BtnCancelarListaClick(object sender, RoutedEventArgs e)
         {
+
+
+
             var res = MessageBox.Show("¿Quieres cancelar la lista actual?", "Santos - Confirmar", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (res == MessageBoxResult.Yes)
             {
