@@ -71,6 +71,7 @@ namespace ProgramaVisorDelTrabajador
         }
         private async void BtnSincronizarClick(object sender, RoutedEventArgs e)
         {
+
             await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("SOLICITAR_PIEZA_ACTUAL");
             Log.Information("PIPE El trabajador ha solicitado sincronización manual.");
         }
