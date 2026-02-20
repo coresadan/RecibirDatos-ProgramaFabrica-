@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -22,72 +23,86 @@ namespace ProgramaVisorDelTrabajador
 {
     public partial class MainWindow : Window
     {
+        private bool _estaTrabajando = false;
+
         public MainWindow()
         {
             InitializeComponent();
-
             ConfiguracionLogs.Inicializar();
 
             var receptor = new ServicioPipeReceptor();
-            receptor.PiezaRecibida += (s, pieza) => Dispatcher.Invoke(() =>
+
+            receptor.MensajeRecibido += (s, contenido) => Dispatcher.Invoke(async () =>
             {
-                if (pieza == null)
+                try
                 {
-                    FinalizacionLista();
+                    var opcionesJson = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var piezaCargada = JsonSerializer.Deserialize<CaracteristicasDePiezas>(contenido, opcionesJson);
+
+                    if (piezaCargada == null)
+                    {
+                        // La oficina dice que no hay nada más que hacer
+                        await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("LIBRE");
+                        FinalizacionLista();
+                    }
+                    else
+                    {
+                        // Carga de pieza normal
+                        DataContext = piezaCargada;
+                        ActualizarEstadoInterfaz(true);
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    DataContext = pieza;
-                    btnTerminar.IsEnabled = true;
-                    btnIncidencia.IsEnabled = true;
+                    Log.Error($"Error al procesar datos: {ex.Message}");
                 }
             });
+
             _ = receptor.IniciarEscuchaAsync(CancellationToken.None);
+        }
+
+        private void ActualizarEstadoInterfaz(bool trabajando)
+        {
+            _estaTrabajando = trabajando;
+            btnTerminar.IsEnabled = trabajando;
+            btnIncidencia.IsEnabled = trabajando;
+            if (!trabajando) DataContext = null;
         }
 
         public void FinalizacionLista()
         {
-            this.DataContext = null;
-            btnTerminar.IsEnabled = false;
-            btnIncidencia.IsEnabled = false;
-
-            MessageBox.Show("Has finalizado el listado de piezas. En breves se te asignará la siguiente", "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
-            Log.Warning("🚨 **ATENCIÓN TÉCNICO** 🚨\n\n" +
-                "El trabajador ha **FINALIZADO** la lista de piezas en Santos.\n" +
-                "Puesto de control: **Visor de Producción**.\n" +
-                "Estado: **PENDIENTE DE NUEVA CARGA**. ⏳");
+            ActualizarEstadoInterfaz(false);
+            MessageBox.Show("Has finalizado el listado de piezas. Esperando nueva carga...",
+                            "Santos - Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private async void btnTerminarClick(object sender, RoutedEventArgs e)
         {
-            await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("acabada");
-            this.DataContext = null;
+            await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("ACABADA");
+            ActualizarEstadoInterfaz(false);
         }
 
         private async void btnIncidenciaClick(object sender, RoutedEventArgs e)
         {
-            await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("falta");
-            this.DataContext = null;
+            await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("FALTA");
+            ActualizarEstadoInterfaz(false);
         }
+
         private async void BtnSincronizarClick(object sender, RoutedEventArgs e)
         {
-
-            await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("SOLICITAR_PIEZA_ACTUAL");
-            Log.Information("PIPE El trabajador ha solicitado sincronización manual.");
+            await SolicitarSiguientePieza();
         }
 
         private async void BtnCancelarListaClick(object sender, RoutedEventArgs e)
         {
-
-
-
-            var res = MessageBox.Show("¿Quieres cancelar la lista actual?", "Santos - Confirmar", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (res == MessageBoxResult.Yes)
+            if (MessageBox.Show("¿Cancelar lista?", "Santos", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
-                await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("LISTA_CANCELADA_POR_TRABAJADOR");
-                this.DataContext = null;
-                Log.Warning("Lista cancelada por el operario.");
+                await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("LIBRE");
+                ActualizarEstadoInterfaz(false);
             }
         }
+
+        private async Task SolicitarSiguientePieza() =>
+            await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("SOLICITAR_PIEZA_ACTUAL");
     }
 }

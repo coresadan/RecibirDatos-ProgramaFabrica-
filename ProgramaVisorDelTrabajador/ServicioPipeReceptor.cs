@@ -14,29 +14,31 @@ namespace ProgramaVisorDelTrabajador
     {
         private const string NombrePipe = "PipeSantosPiezas";
 
-        public event EventHandler<CaracteristicasDePiezas>? PiezaRecibida;
+        public event EventHandler<string>? MensajeRecibido;
 
         public async Task IniciarEscuchaAsync(CancellationToken ct)
         {
-            var opcionesJson = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
             while (!ct.IsCancellationRequested)
             {
                 try
                 {
-                    using var server = new NamedPipeServerStream(NombrePipe, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                    using var server = new NamedPipeServerStream(
+                        NombrePipe, 
+                        PipeDirection.In, 
+                        1, 
+                        PipeTransmissionMode.Byte, 
+                        PipeOptions.Asynchronous);
 
                     await server.WaitForConnectionAsync(ct);
 
                     using var reader = new StreamReader(server);
-                    string? json = await reader.ReadLineAsync();
 
-                    CaracteristicasDePiezas? pieza = null;
-                    if (!string.IsNullOrEmpty(json))
+                    string? contenido = await reader.ReadLineAsync();
+
+                    if (!string.IsNullOrEmpty(contenido))
                     {
-                        pieza = JsonSerializer.Deserialize<CaracteristicasDePiezas>(json, opcionesJson);
+                        MensajeRecibido?.Invoke(this, contenido);
                     }
-                    PiezaRecibida?.Invoke(this, pieza!);
                 }
                 catch (OperationCanceledException) { break; }
                 catch (Exception)
