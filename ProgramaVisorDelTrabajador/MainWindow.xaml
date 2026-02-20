@@ -49,7 +49,7 @@
         </Border>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
-            <Button Name="btnTerminar" Click="btnTerminarClick" Content="PIEZA LISTA ✅" 
+            <Button Name="btnTerminar" Click="btnTerminarClick" Content="PIEZAS LISTA ✅" 
                     Width="240" Height="80" Margin="15" Background="#FF2ECC71" 
                     Foreground="White" FontSize="22" FontWeight="Bold">
                 <Button.Resources>
