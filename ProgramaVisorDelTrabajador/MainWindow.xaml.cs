@@ -25,8 +25,10 @@ namespace ProgramaVisorDelTrabajador
     {
         public bool _estaTrabajando = false;
         public bool _trabajadorEstaOcupado = false;
+        // Centralizamos el emisor aquí
+        private readonly ServicioPipeEmisor _emisor = new ServicioPipeEmisor();
 
- public MainWindow()
+        public MainWindow()
         {
             InitializeComponent();
             ConfiguracionLogs.Inicializar();
@@ -38,12 +40,12 @@ namespace ProgramaVisorDelTrabajador
                 try
                 {
                     var opcionesJson = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
                     var piezaCargada = JsonSerializer.Deserialize<CaracteristicasDePiezas>(contenido, opcionesJson);
 
                     if (piezaCargada == null)
                     {
-                        await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("LIBRE");
+                        // Usamos el emisor central
+                        await _emisor.EnviarRespuestaOficinaAsync("LIBRE");
                         FinalizacionLista();
                     }
                     else
@@ -59,6 +61,12 @@ namespace ProgramaVisorDelTrabajador
             });
 
             _ = receptor.IniciarEscuchaAsync(CancellationToken.None);
+        }
+
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            Log.Information("🔄 Iniciando sincronización con la Oficina...");
+            await _emisor.EnviarRespuestaOficinaAsync("SOLICITAR_PIEZA_ACTUAL");
         }
 
         private void ActualizarEstadoInterfaz(bool trabajando)
@@ -78,13 +86,13 @@ namespace ProgramaVisorDelTrabajador
 
         private async void btnTerminarClick(object sender, RoutedEventArgs e)
         {
-            await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("ACABADA");
+            await _emisor.EnviarRespuestaOficinaAsync("ACABADA");
             ActualizarEstadoInterfaz(false);
         }
 
         private async void btnIncidenciaClick(object sender, RoutedEventArgs e)
         {
-            await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("FALTA");
+            await _emisor.EnviarRespuestaOficinaAsync("FALTA");
             ActualizarEstadoInterfaz(false);
         }
 
@@ -97,12 +105,12 @@ namespace ProgramaVisorDelTrabajador
         {
             if (MessageBox.Show("¿Cancelar lista?", "Santos", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
-                await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("LIBRE");
+                await _emisor.EnviarRespuestaOficinaAsync("LIBRE");
                 ActualizarEstadoInterfaz(false);
             }
         }
 
         private async Task SolicitarSiguientePieza() =>
-            await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("SOLICITAR_PIEZA_ACTUAL");
+            await _emisor.EnviarRespuestaOficinaAsync("SOLICITAR_PIEZA_ACTUAL");
     }
 }

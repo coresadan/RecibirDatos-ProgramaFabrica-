@@ -1,7 +1,7 @@
 ﻿<Window x:Class="ProgramaVisorDelTrabajador.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Visor del Trabajador - Santos" Height="550" Width="850">
+        Title="Visor del Trabajador - Santos" Height="550" Width="850" Loaded="Window_Loaded">
     <Window.Background>
         <ImageBrush ImageSource="/ChatGPT Image 16 feb 2026, 11_06_33.png"/>
     </Window.Background>
