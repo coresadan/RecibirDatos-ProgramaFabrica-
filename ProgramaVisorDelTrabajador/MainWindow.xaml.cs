@@ -23,9 +23,10 @@ namespace ProgramaVisorDelTrabajador
 {
     public partial class MainWindow : Window
     {
-        private bool _estaTrabajando = false;
+        public bool _estaTrabajando = false;
+        public bool _trabajadorEstaOcupado = false;
 
-        public MainWindow()
+ public MainWindow()
         {
             InitializeComponent();
             ConfiguracionLogs.Inicializar();
@@ -37,17 +38,16 @@ namespace ProgramaVisorDelTrabajador
                 try
                 {
                     var opcionesJson = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
                     var piezaCargada = JsonSerializer.Deserialize<CaracteristicasDePiezas>(contenido, opcionesJson);
 
                     if (piezaCargada == null)
                     {
-                        // La oficina dice que no hay nada más que hacer
                         await new ServicioPipeEmisor().EnviarRespuestaOficinaAsync("LIBRE");
                         FinalizacionLista();
                     }
                     else
                     {
-                        // Carga de pieza normal
                         DataContext = piezaCargada;
                         ActualizarEstadoInterfaz(true);
                     }
