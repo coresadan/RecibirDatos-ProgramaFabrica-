@@ -81,7 +81,7 @@ namespace ProgramaVisorDelTrabajador
         {
             ActualizarEstadoInterfaz(false);
             MessageBox.Show("Has finalizado el listado de piezas. Esperando nueva carga...",
-                            "Santos - Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+                            "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private async void btnTerminarClick(object sender, RoutedEventArgs e)
@@ -111,7 +111,7 @@ namespace ProgramaVisorDelTrabajador
 
         private async void BtnCancelarListaClick(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("¿Cancelar lista?", "Santos", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            if (MessageBox.Show("¿Cancelar lista?", "Aviso", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
                 await _emisor.EnviarRespuestaOficinaAsync("LIBRE");
                 ActualizarEstadoInterfaz(false);
