@@ -98,7 +98,15 @@ namespace ProgramaVisorDelTrabajador
 
         private async void BtnSincronizarClick(object sender, RoutedEventArgs e)
         {
-            await SolicitarSiguientePieza();
+            MessageBoxResult respuesta = MessageBox.Show("Solicitando sincronización con la Oficina... Continuar?", "Sincronización", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (respuesta == MessageBoxResult.Yes)
+            {
+                await SolicitarSiguientePieza();
+            }
+            if (respuesta == MessageBoxResult.No)
+            {
+                MessageBox.Show("Sincronización cancelada. ", "Sincronización", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
         private async void BtnCancelarListaClick(object sender, RoutedEventArgs e)
