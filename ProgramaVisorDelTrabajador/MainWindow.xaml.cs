@@ -24,7 +24,6 @@ namespace ProgramaVisorDelTrabajador
     public partial class MainWindow : Window
     {
         public bool _estaTrabajando = false;
-        public bool _trabajadorEstaOcupado = false;
         // Centralizamos el emisor aquí
         private readonly ServicioPipeEmisor _emisor = new ServicioPipeEmisor();
 
