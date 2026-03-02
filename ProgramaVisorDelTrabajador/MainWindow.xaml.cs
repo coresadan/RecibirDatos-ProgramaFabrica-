@@ -17,6 +17,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.Data.Sqlite;
 using static ProgramaVisorDelTrabajador.CaracteristicasDePiezas;
 
 namespace ProgramaVisorDelTrabajador
@@ -85,12 +86,47 @@ namespace ProgramaVisorDelTrabajador
 
         private async void btnTerminarClick(object sender, RoutedEventArgs e)
         {
+            // 1. Obtener la pieza que tenemos en pantalla
+            var pieza = DataContext as CaracteristicasDePiezas;
+
+            if (pieza != null)
+            {
+                // 2. ACTUALIZAR BASE DE DATOS (Lo que faltaba)
+                ActualizarEstadoLocal(pieza.Id, "Terminado");
+            }
+
+            // 3. Avisar a la oficina como ya hacías
             await _emisor.EnviarRespuestaOficinaAsync("ACABADA");
             ActualizarEstadoInterfaz(false);
         }
 
+        private void ActualizarEstadoLocal(int id, string estado)
+        {
+            try
+            {
+                using var conexion = new SqliteConnection("Data Source=C:\\pruebas\\BDPiezas.s3db");
+                conexion.Open();
+                var cmd = new SqliteCommand("UPDATE RegistroDePiezas SET Estado = @est WHERE Id = @id", conexion);
+                cmd.Parameters.AddWithValue("@est", estado);
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Error guardando en DB desde fábrica: {ex.Message}");
+            }
+        }
+
         private async void btnIncidenciaClick(object sender, RoutedEventArgs e)
         {
+            // 1. Obtener la pieza que tenemos en pantalla
+            if (DataContext is CaracteristicasDePiezas pieza)
+            {
+                // 2. Guardamos el estado de error en la base de datos SQLite
+                ActualizarEstadoLocal(pieza.Id, "FALTA/RECHAZO");
+            }
+
+            // 3. Avisamos a la oficina por el Pipe
             await _emisor.EnviarRespuestaOficinaAsync("FALTA");
             ActualizarEstadoInterfaz(false);
         }
