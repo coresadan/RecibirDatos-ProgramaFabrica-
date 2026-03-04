@@ -25,56 +25,110 @@ namespace ProgramaVisorDelTrabajador
     public partial class MainWindow : Window
     {
         public bool _estaTrabajando = false;
-        // Centralizamos el emisor aquí
+
         private readonly ServicioPipeEmisor _emisor = new ServicioPipeEmisor();
 
         public MainWindow()
         {
             InitializeComponent();
-            ConfiguracionLogs.Inicializar();
 
+            // 1. Estado inicial de seguridad
+            ActualizarEstadoInterfaz(false);
+
+            // 2. Logs y servicios
+            ConfiguracionLogs.Inicializar();
             var receptor = new ServicioPipeReceptor();
 
+            // 3. Configuración del receptor inteligente
             receptor.MensajeRecibido += (s, contenido) => Dispatcher.Invoke(async () =>
             {
                 try
                 {
-                    var opcionesJson = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    var piezaCargada = JsonSerializer.Deserialize<CaracteristicasDePiezas>(contenido, opcionesJson);
+                    // 1. Limpieza básica del mensaje
+                    if (string.IsNullOrWhiteSpace(contenido)) return;
+                    string mensaje = contenido.Trim();
 
-                    if (piezaCargada == null)
+                    // 2. --- COMANDOS DE CONTROL ---
+                    if (mensaje == "SESION_INICIADA")
                     {
-                        // Usamos el emisor central
+                        ActualizarEstadoInterfaz(true);
+                        Log.Information("🔓 Acceso concedido por Oficina.");
+                        return;
+                    }
+
+                    if (mensaje == "SESION_FINALIZADA")
+                    {
+                        ActualizarEstadoInterfaz(false);
+                        Log.Warning("🔒 Acceso revocado por Oficina.");
+                        return;
+                    }
+
+                    // 3. --- RECEPCIÓN DE PIEZAS (JSON) ---
+                    if (mensaje.StartsWith("{"))
+                    {
+                        var opciones = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var piezaCargada = JsonSerializer.Deserialize<CaracteristicasDePiezas>(mensaje, opciones);
+
+                        if (piezaCargada != null)
+                        {
+                            DataContext = piezaCargada;
+                            ActualizarEstadoInterfaz(true);
+                            Log.Information($"📦 Pieza {piezaCargada.Id} cargada en pantalla.");
+                            return;
+                        }
+                    }
+
+                    // 4. --- GESTIÓN DE FIN DE LISTA O PIEZA NULA ---
+                    if (mensaje.ToLower() == "null" || mensaje == "FIN_LISTA")
+                    {
+                        Log.Information("🏁 La oficina indica que no hay más piezas pendientes.");
                         await _emisor.EnviarRespuestaOficinaAsync("LIBRE");
                         FinalizacionLista();
                     }
                     else
                     {
-                        DataContext = piezaCargada;
-                        ActualizarEstadoInterfaz(true);
+                        Log.Debug($"✉️ Mensaje ignorado o no reconocido: {mensaje}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error($"Error al procesar datos: {ex.Message}");
+                    Log.Error($"❌ Error en recepción de datos: {ex.Message}");
                 }
             });
 
+            // 4. Arrancamos la escucha del Pipe
             _ = receptor.IniciarEscuchaAsync(CancellationToken.None);
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             Log.Information("🔄 Iniciando sincronización con la Oficina...");
-            await _emisor.EnviarRespuestaOficinaAsync("SOLICITAR_PIEZA_ACTUAL");
         }
 
         private void ActualizarEstadoInterfaz(bool trabajando)
         {
+            // 1. Guardamos el estado interno
             _estaTrabajando = trabajando;
+
+            // 2. Bloqueamos o habilitamos los botones de acción
             btnTerminar.IsEnabled = trabajando;
             btnIncidencia.IsEnabled = trabajando;
-            if (!trabajando) DataContext = null;
+
+            // 3. Gestionamos la limpieza de datos y los mensajes de estado
+            if (!trabajando)
+            {
+                DataContext = null;
+                lblEstado.Text = "🛑 SISTEMA BLOQUEADO - ESPERANDO LOGIN EN OFICINA";
+                lblEstado.Foreground = System.Windows.Media.Brushes.Tomato; // Un color de aviso
+            }
+            else
+            {
+                lblEstado.Text = "🟢 SISTEMA LISTO - OPERARIO ACTIVO";
+                lblEstado.Foreground = System.Windows.Media.Brushes.LightGreen; // Un color de "OK"
+            }
+
+            // 4. Opcional: Feedback visual de transparencia para todo el visor
+            this.Opacity = trabajando ? 1.0 : 0.8;
         }
 
         public void FinalizacionLista()
@@ -109,38 +163,61 @@ namespace ProgramaVisorDelTrabajador
                 var cmd = new SqliteCommand("UPDATE RegistroDePiezas SET Estado = @est WHERE Id = @id", conexion);
                 cmd.Parameters.AddWithValue("@est", estado);
                 cmd.Parameters.AddWithValue("@id", id);
-                cmd.ExecuteNonQuery();
+                int filas = cmd.ExecuteNonQuery();
+
+                if (filas > 0) Log.Information($"✅ DB local actualizada: Pieza {id} -> {estado}");
             }
             catch (Exception ex)
             {
-                Log.Error($"Error guardando en DB desde fábrica: {ex.Message}");
+                Log.Error($"Error guardando en DB: {ex.Message}");
             }
         }
 
         private async void btnIncidenciaClick(object sender, RoutedEventArgs e)
         {
-            // 1. Obtener la pieza que tenemos en pantalla
             if (DataContext is CaracteristicasDePiezas pieza)
             {
-                // 2. Guardamos el estado de error en la base de datos SQLite
-                ActualizarEstadoLocal(pieza.Id, "FALTA/RECHAZO");
-            }
+                ActualizarEstadoLocal(pieza.Id, "Falta");
 
-            // 3. Avisamos a la oficina por el Pipe
-            await _emisor.EnviarRespuestaOficinaAsync("FALTA");
-            ActualizarEstadoInterfaz(false);
+                Log.Information($"⚠️ Incidencia registrada localmente para pieza {pieza.Id}");
+
+                await _emisor.EnviarRespuestaOficinaAsync($"INCIDENCIA|{pieza.Id}");
+
+                ActualizarEstadoInterfaz(false);
+            }
         }
 
         private async void BtnSincronizarClick(object sender, RoutedEventArgs e)
         {
-            MessageBoxResult respuesta = MessageBox.Show("Solicitando sincronización con la Oficina... Continuar?", "Sincronización", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            MessageBoxResult respuesta = MessageBox.Show("¿Deseas solicitar la pieza actual a la oficina?",
+                                                         "Confirmar Sincronización",
+                                                         MessageBoxButton.YesNo,
+                                                         MessageBoxImage.Question);
+
             if (respuesta == MessageBoxResult.Yes)
             {
-                await SolicitarSiguientePieza();
-            }
-            if (respuesta == MessageBoxResult.No)
-            {
-                MessageBox.Show("Sincronización cancelada. ", "Sincronización", MessageBoxButton.OK, MessageBoxImage.Information);
+                try
+                {
+                    lblEstado.Text = "⏳ ESPERANDO RESPUESTA DE OFICINA...";
+                    lblEstado.Foreground = System.Windows.Media.Brushes.Orange;
+
+                    await SolicitarSiguientePieza();
+
+                    await Task.Delay(2000);
+
+                    if (!_estaTrabajando)
+                    {
+                        lblEstado.Text = "🛑 OFICINA NO RESPONDE (¿SIN SESIÓN?)";
+                        lblEstado.Foreground = System.Windows.Media.Brushes.Tomato;
+
+                        MessageBox.Show("La oficina no ha iniciado sesión con ningún usuario.\n\nVerifique que el programa de oficina disponga de conexión.",
+                                        "Sin Respuesta", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"Error al sincronizar: {ex.Message}");
+                }
             }
         }
 

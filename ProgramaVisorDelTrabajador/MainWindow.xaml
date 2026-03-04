@@ -2,15 +2,43 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Visor del Trabajador" Height="550" Width="850" Loaded="Window_Loaded">
+
     <Window.Background>
         <ImageBrush ImageSource="/ChatGPT Image 16 feb 2026, 11_06_33.png"/>
     </Window.Background>
+
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="10" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                BorderBrush="{TemplateBinding BorderBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.8"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#888"/>
+                    <Setter Property="Opacity" Value="0.5"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="130"/>
-            <RowDefinition Height="70"/>
+            <RowDefinition Height="100"/>
         </Grid.RowDefinitions>
 
         <Border Margin="50,40,50,20" Padding="15" CornerRadius="15">
@@ -48,48 +76,32 @@
             </StackPanel>
         </Border>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+        <StackPanel x:Name="PanelBotones" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button Name="btnTerminar" Click="btnTerminarClick" Content="PIEZAS LISTA ✅" 
                     Width="240" Height="80" Margin="15" Background="#FF2ECC71" 
-                    Foreground="White" FontSize="22" FontWeight="Bold">
-                <Button.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="CornerRadius" Value="10"/>
-                    </Style>
-                </Button.Resources>
-            </Button>
+                    Foreground="White" FontSize="22" FontWeight="Bold"/>
 
             <Button Name="btnIncidencia" Click="btnIncidenciaClick" Content="FALTA O DEFECTO ⚠️" 
                     Width="240" Height="80" Margin="15" Background="#FFE74C3C" 
-                    Foreground="White" FontSize="22" FontWeight="Bold">
-                <Button.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="CornerRadius" Value="10"/>
-                    </Style>
-                </Button.Resources>
-            </Button>
+                    Foreground="White" FontSize="22" FontWeight="Bold"/>
         </StackPanel>
 
         <Grid Grid.Row="2" Margin="50,0,50,15">
             <Button Content="🔄 Sincronizar" Click="BtnSincronizarClick" 
-                    HorizontalAlignment="Left" Width="140" Height="40" 
-                    Background="#3498DB" Foreground="White" FontWeight="SemiBold" BorderThickness="0">
-                <Button.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="CornerRadius" Value="20"/>
-                    </Style>
-                </Button.Resources>
-            </Button>
+                    HorizontalAlignment="Left" Width="140" Height="40" VerticalAlignment="Top"
+                    Background="#3498DB" Foreground="White" FontWeight="SemiBold" BorderThickness="0"/>
+
+            <TextBlock x:Name="lblEstado" Text="ESPERANDO CONEXIÓN..." 
+                       Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       FontSize="14" FontWeight="Bold" Margin="0,0,0,10">
+                <TextBlock.Effect>
+                    <DropShadowEffect BlurRadius="5" ShadowDepth="1"/>
+                </TextBlock.Effect>
+            </TextBlock>
 
             <Button Content="🚫 Cancelar Lista" Click="BtnCancelarListaClick" 
-                    HorizontalAlignment="Right" Width="140" Height="40" 
-                    Background="#555" Foreground="White" FontWeight="SemiBold" BorderThickness="0">
-                <Button.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="CornerRadius" Value="20"/>
-                    </Style>
-                </Button.Resources>
-            </Button>
+                    HorizontalAlignment="Right" Width="140" Height="40" VerticalAlignment="Top"
+                    Background="#555" Foreground="White" FontWeight="SemiBold" BorderThickness="0"/>
         </Grid>
     </Grid>
 </Window>
